@@ -1,0 +1,19 @@
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'jacoco'
+
+version = '1.0.0'
+sourceCompatibility = 1.8
+
+dependencies {
+  compile 'commons-io:commons-io:2.5'
+  compile 'org.slf4j:slf4j-log4j12:1.7.12'
+  testCompile 'junit:junit:4.12'
+  testCompile 'org.mockito:mockito-core:2.8.47'
+
+}
+
+repositories {
+  mavenCentral()
+}
