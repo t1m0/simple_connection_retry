@@ -6,18 +6,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Iterator;
 
-public class RerunRunnable extends ANetworkAccess implements Runnable {
+/** Launched by the processor in case of any connectivity errors and retries to send the failed messages if the connection is established again. */
+public class RetryRunnable extends ANetworkAccess implements Runnable {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RerunRunnable.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RetryRunnable.class);
 
     private static final long SLEEP_TIME = 10000;//10sec;
-    private static final String TMP_EXTENSION = ".tmp";
+
 
     private static boolean running = false;
 
-    public RerunRunnable(IConnectionProvider connectionProvider) {
-        super(connectionProvider);
+    public RetryRunnable(IConnectionProvider connectionProvider, IRetryCache retryCache) {
+        super(connectionProvider,retryCache);
     }
 
     public static synchronized boolean isRunning() {
@@ -25,7 +27,7 @@ public class RerunRunnable extends ANetworkAccess implements Runnable {
     }
 
     private static void setRunning(boolean running) {
-        RerunRunnable.running = running;
+        RetryRunnable.running = running;
     }
 
     @Override
@@ -42,35 +44,16 @@ public class RerunRunnable extends ANetworkAccess implements Runnable {
                 }
             } while (httpConnectionBroken);
             LOGGER.info("Connection established, starting rerun of failed messages.");
-            Processor processor = new Processor(connectionProvider);
-            File backupFile = new File(Processor.BACKUP_FILE_NAME);
-            File tmpBackupFile = new File(Processor.BACKUP_FILE_NAME+TMP_EXTENSION);
-            if(tmpBackupFile.exists())
-                tmpBackupFile.delete();
-            LineIterator iterator = null;
-            try {
-                while (!backupFile.canWrite()){
-                    sleep(500);
-                }
-                FileUtils.moveFile(backupFile,tmpBackupFile);
-                iterator = FileUtils.lineIterator(tmpBackupFile, "UTF-8");
-                while (iterator.hasNext()) {
-                    String line = iterator.nextLine();
-                    processor.sendData(line);
-                }
-                iterator.close();
-                tmpBackupFile.delete();
-            } catch (Exception e){
-                throw new RuntimeException("Error processing backup file, manual intervention required to process the left over messages",e);
-            }finally {
-                LineIterator.closeQuietly(iterator);
-            }
+            Processor processor = new Processor(connectionProvider,retryCache);
+            retryCache.processCachedItems((message)-> processor.sendData(message));
             LOGGER.info("Rerun of failed messages finished, closing thread.");
             setRunning(false);
         } else {
             LOGGER.debug("Didn't launch a new thread as, there is already one running.");
         }
     }
+
+
 
     private void sleep(long time){
         try {

@@ -10,9 +10,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
-/**
- * Created by timo.schoepflin on 24.08.2017.
- */
+/** Implements the {@link IConnectionProvider} interface to provide the required implementation to perform http calls */
 public class HttpConnectionProvider implements IConnectionProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpConnectionProvider.class);
@@ -32,27 +30,25 @@ public class HttpConnectionProvider implements IConnectionProvider {
         return url;
     }
 
-    private HttpURLConnection getHttpURLConnection() throws IOException {
-        HttpURLConnection conn = null;
+    private HttpURLConnection openHttpURLConnection(String requestMethod) throws ConnectionFailedException {
         try {
-            conn = (HttpURLConnection) getUrl().openConnection();
+            HttpURLConnection conn = (HttpURLConnection) getUrl().openConnection();
             conn.setDoOutput(true);
-            conn.setRequestMethod("PUT");
+            conn.setRequestMethod(requestMethod);
             conn.setRequestProperty("Content-Type", "application/json");
-        }catch (IOException e){
-            throw e;
+            return conn;
         } catch (Exception e){
-            throw new RuntimeException("Error while opening connection to  '"+strUrl+"'",e);
+            throw new ConnectionFailedException("Error while opening connection to  '"+strUrl+"'",e);
         }
-        return conn;
     }
 
+    /** {@inheritDoc} */
     @Override
     public Response sendData(String data) throws ConnectionFailedException {
         String errorMessage=null;
         HttpURLConnection conn=null;
         try {
-            conn = getHttpURLConnection();
+            conn = openHttpURLConnection("PUT");
             OutputStream os = conn.getOutputStream();
             os.write(data.getBytes(StandardCharsets.UTF_8));
             os.flush();
@@ -62,12 +58,7 @@ public class HttpConnectionProvider implements IConnectionProvider {
             conn.disconnect();
             return new Response(errorMessage != null,errorMessage);
         }catch (IOException e){
-            String execMsg = "Unable to connect to '"+strUrl+"'.";
-            if(LOGGER.isDebugEnabled()){
-                LOGGER.warn(execMsg,e);
-            }else {
-                LOGGER.warn(execMsg);
-            }
+            LOGGER.warn("Unable to connect to '"+strUrl+"'.",e);
             throw new ConnectionFailedException("Failed to create connection!",e);
         }finally {
             if(conn != null)
@@ -75,19 +66,17 @@ public class HttpConnectionProvider implements IConnectionProvider {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean verifyConnection() {
         boolean success = false;
         HttpURLConnection conn = null;
         try{
-            conn = getHttpURLConnection();
+            conn = openHttpURLConnection("PUT");
             conn.connect();
             success = true;
-        }catch (IOException e){
-            LOGGER.info("Still unable to establish connection to '"+strUrl+"'.");
-            if(LOGGER.isDebugEnabled()){
-                LOGGER.debug("Connection error on verify.",e);
-            }
+        }catch (ConnectionFailedException | IOException e){
+            LOGGER.info("Still unable to establish connection to '"+strUrl+"'.",e);
         }finally {
             if(conn != null)
                 conn.disconnect();
