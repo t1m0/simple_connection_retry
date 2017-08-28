@@ -1,12 +1,7 @@
 package com.t1m0.test;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.LineIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.util.Iterator;
 
 /** Launched by the processor in case of any connectivity errors and retries to send the failed messages if the connection is established again. */
 public class RetryRunnable extends ANetworkAccess implements Runnable {
@@ -35,10 +30,10 @@ public class RetryRunnable extends ANetworkAccess implements Runnable {
         if(!isRunning()){
             setRunning(true);
             LOGGER.info("Start monitoring if connection is available again.");
-            boolean httpConnectionBroken = true;
+            boolean httpConnectionBroken;
             do {
-                httpConnectionBroken = connectionProvider.verifyConnection();
-                if(!httpConnectionBroken){
+                httpConnectionBroken = !connectionProvider.verifyConnection();
+                if(httpConnectionBroken){
                     LOGGER.info("Sleeping for '"+(SLEEP_TIME/1000)+"' seconds before the next retry.");
                     sleep(SLEEP_TIME);
                 }

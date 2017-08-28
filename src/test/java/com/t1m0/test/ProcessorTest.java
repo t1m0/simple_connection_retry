@@ -1,12 +1,6 @@
 package com.t1m0.test;
 
 import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-
-import java.time.format.DateTimeFormatter;
-
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -30,13 +24,12 @@ public class ProcessorTest {
     }
 
     @Test
-    @Ignore
     public void testSuccessfulRecovery() throws IConnectionProvider.ConnectionFailedException, InterruptedException {
         when(connectionProvider.sendData(anyString())).thenThrow(new IConnectionProvider.ConnectionFailedException("Uuups something failed!"));
         when(connectionProvider.verifyConnection()).thenReturn(true);
-        doAnswer(invocation ->{return null;}).when(retryCache).put(TEST_MESSAGE);
+        doAnswer(invocation -> null).when(retryCache).put(TEST_MESSAGE);
         doAnswer(invocation -> {
-            ((IRetryCache.ItemProcessor)invocation.getArguments()[1]).processCachedItem(TEST_MESSAGE);
+            ((IRetryCache.ItemProcessor)invocation.getArguments()[0]).processCachedItem(TEST_MESSAGE);
             return null;
         }).when(retryCache).processCachedItems(any());
         Processor p = new Processor(connectionProvider,retryCache);
